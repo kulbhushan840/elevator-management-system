@@ -13,21 +13,35 @@ import java.util.List;
 
 public class JwtFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
-    public JwtFilter(JwtUtil jwtUtil) { this.jwtUtil = jwtUtil; }
+
+    public JwtFilter(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
+    }
+
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain) throws ServletException, IOException {
         String auth = request.getHeader("Authorization");
+
         if (auth != null && auth.startsWith("Bearer ")) {
             try {
                 var claims = jwtUtil.parse(auth.substring(7)).getBody();
                 String username = claims.getSubject();
-                String role = (String) claims.get("role");
-                var authToken = new UsernamePasswordAuthenticationToken(username, null, List.of(new SimpleGrantedAuthority("ROLE_"+role)));
+                String role = (String) claims.get("role"); // e.g. PASSENGER
+
+                var authToken = new UsernamePasswordAuthenticationToken(
+                        username,
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_" + role)) // Spring expects ROLE_
+                );
+
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             } catch (Exception e) {
-                // ignore invalid token
+                // invalid token -> skip
             }
         }
+
         chain.doFilter(request, response);
     }
 }
